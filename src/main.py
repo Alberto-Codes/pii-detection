@@ -3,12 +3,8 @@ from presidio_analyzer import AnalyzerEngine
 from presidio_structured import StructuredEngine, StructuredAnalysis, PandasDataProcessor
 import pandas as pd
 
-def get_analyzer_engine():
-    # Initialize the AnalyzerEngine
-    analyzer_engine = AnalyzerEngine()
-    return analyzer_engine
-
-analyzer_engine = get_analyzer_engine()
+# Initialize the AnalyzerEngine
+analyzer_engine = AnalyzerEngine()
 
 # Initialize the StructuredEngine
 structured_engine = StructuredEngine(analyzer_engine=analyzer_engine, data_processor=PandasDataProcessor())
@@ -18,6 +14,7 @@ def scan_dataframe_for_pii(df):
     entity_mapping = {column: None for column in df.columns}
     analysis_definition = StructuredAnalysis(entity_mapping=entity_mapping)
     results = structured_engine.analyze(df, analysis_definition)
+    
     findings = []
     for result in results:
         if result.recognizer_results:
@@ -52,7 +49,8 @@ def extract_and_scan_csv(filepath):
         if findings:
             return [{'findings': findings}]
         else:
-            return []
+            # Handle unstructured files if needed
+            pass
     except Exception as e:
         print(f"Error processing {filepath}: {e}")
         return []
@@ -66,53 +64,17 @@ def scan_directory(directory):
                 findings = extract_and_scan_excel(filepath)
                 if findings:
                     report[filepath] = findings
-            elif filepath.endswith('.csv'):
+            elif filepath.endswith(('.csv', '.txt')):
                 findings = extract_and_scan_csv(filepath)
                 if findings:
                     report[filepath] = findings
-            else:
-                # Handle unstructured files if needed
-                pass
     return report
 
-def generate_report(report):
-    for filepath, findings in report.items():
-        print(f"File: {filepath}")
-        for item in findings:
-            if 'sheet' in item:
-                sheet_name = item['sheet']
-                sheet_findings = item['findings']
-                print(f"  Sheet: {sheet_name}")
-                for finding in sheet_findings:
-                    row = finding['row']
-                    column = finding['column']
-                    text = finding['text']
-                    for entity in finding['pii_entities']:
-                        entity_type = entity.entity_type
-                        score = entity.score
-                        print(f"    Cell ({row}, {column}): '{text}'")
-                        print(f"      Entity: {entity_type}, Confidence Score: {score:.2f}")
-            else:
-                # CSV files
-                sheet_findings = item['findings']
-                for finding in sheet_findings:
-                    row = finding['row']
-                    column = finding['column']
-                    text = finding['text']
-                    for entity in finding['pii_entities']:
-                        entity_type = entity.entity_type
-                        score = entity.score
-                        print(f"  Row {row}, Column '{column}': '{text}'")
-                        print(f"    Entity: {entity_type}, Confidence Score: {score:.2f}")
-        print('-' * 40)
-
-def main():
+if __name__ == '__main__':
     directory = input("Enter the directory to scan: ")
     report = scan_directory(directory)
+    
     if report:
         generate_report(report)
     else:
         print("No PII found in the scanned directory.")
-
-if __name__ == "__main__":
-    main()
